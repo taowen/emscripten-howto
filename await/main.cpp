@@ -15,8 +15,9 @@ struct sleep_awaiter {
    bool await_ready() const {
       return false;
    }
-   void await_resume() {
+   int await_resume() {
       std::cout << "resume" << std::endl;
+      return 42;
    }
    void await_suspend(std::coroutine_handle<> h) {
       pending = h;
@@ -29,10 +30,15 @@ sleep_awaiter sleep() {
    return sleep_awaiter{};
 }
 
+task<int> do_sleep() {
+   int ret = co_await sleep();
+   co_return ret;
+}
+
 task<void> async_process() {
    std::cout << "begin async process" << std::endl;
-   co_await sleep();
-   std::cout << "end async process" << std::endl;
+   int i = co_await do_sleep();
+   std::cout << "end async process: " << i << std::endl;
 }
 
 async_scope global_scope;

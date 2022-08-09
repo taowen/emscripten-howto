@@ -1420,11 +1420,6 @@ function js_sleep() { console.log('js sleep'); setTimeout(() => { Module._wasm_w
       abort('native code called abort()');
     }
 
-  function _emscripten_exit_with_live_runtime() {
-      
-      throw 'unwind';
-    }
-
   function _emscripten_memcpy_big(dest, src, num) {
       HEAPU8.copyWithin(dest, src, src + num);
     }
@@ -4857,7 +4852,6 @@ var asmLibraryArg = {
   "__cxa_allocate_exception": ___cxa_allocate_exception,
   "__cxa_throw": ___cxa_throw,
   "abort": _abort,
-  "emscripten_exit_with_live_runtime": _emscripten_exit_with_live_runtime,
   "emscripten_memcpy_big": _emscripten_memcpy_big,
   "emscripten_resize_heap": _emscripten_resize_heap,
   "environ_get": _environ_get,

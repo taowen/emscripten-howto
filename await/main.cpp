@@ -47,7 +47,6 @@ void wasm_wakeup() {
 int main() {
    std::cout << "enter main()" << std::endl;
    global_scope.spawn_detached(lazy_task{[] { return async_process(); }});
-   emscripten_exit_with_live_runtime();
 }
 
 }

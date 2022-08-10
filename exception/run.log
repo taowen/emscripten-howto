@@ -1,0 +1,12 @@
+!!! about to throw
+std::runtime_error shit happens WebAssembly.Exception: wasm exception
+    at _Unwind_RaiseException (wasm://wasm/002425a6:wasm-function[1637]:0x2521c)
+    at __cxa_throw (wasm://wasm/002425a6:wasm-function[1549]:0x23ec9)
+    at in_sub_function() (wasm://wasm/002425a6:wasm-function[13]:0x142e)
+    at call_back_wasm (wasm://wasm/002425a6:wasm-function[14]:0x1455)
+    at Object._call_back_wasm (/home/wukong/spike/exception/a.out.js:977:22)
+    at call_js (/home/wukong/spike/exception/a.out.js:1166:35)
+    at __original_main (wasm://wasm/002425a6:wasm-function[21]:0x191b)
+    at main (wasm://wasm/002425a6:wasm-function[57]:0x2664)
+    at /home/wukong/spike/exception/a.out.js:977:22
+    at callMain (/home/wukong/spike/exception/a.out.js:5260:15)

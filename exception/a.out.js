@@ -1032,136 +1032,6 @@ function getBinaryPromise() {
   return Promise.resolve().then(function() { return getBinary(wasmBinaryFile); });
 }
 
-var wasmSourceMap;
-// include: source_map_support.js
-
-
-/**
- * @constructor
- */
-function WasmSourceMap(sourceMap) {
-  this.version = sourceMap.version;
-  this.sources = sourceMap.sources;
-  this.names = sourceMap.names;
-
-  this.mapping = {};
-  this.offsets = [];
-
-  var vlqMap = {};
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='.split('').forEach((c, i) => vlqMap[c] = i);
-
-  // based on https://github.com/Rich-Harris/vlq/blob/master/src/vlq.ts
-  function decodeVLQ(string) {
-    var result = [];
-    var shift = 0;
-    var value = 0;
-
-    for (var i = 0; i < string.length; ++i) {
-      var integer = vlqMap[string[i]];
-      if (integer === undefined) {
-        throw new Error('Invalid character (' + string[i] + ')');
-      }
-
-      value += (integer & 31) << shift;
-
-      if (integer & 32) {
-        shift += 5;
-      } else {
-        var negate = value & 1;
-        value >>= 1;
-        result.push(negate ? -value : value);
-        value = shift = 0;
-      }
-    }
-    return result;
-  }
-
-  var offset = 0, src = 0, line = 1, col = 1, name = 0;
-  sourceMap.mappings.split(',').forEach(function (segment, index) {
-    if (!segment) return;
-    var data = decodeVLQ(segment);
-    var info = {};
-
-    offset += data[0];
-    if (data.length >= 2) info.source = src += data[1];
-    if (data.length >= 3) info.line = line += data[2];
-    if (data.length >= 4) info.column = col += data[3];
-    if (data.length >= 5) info.name = name += data[4];
-    this.mapping[offset] = info;
-    this.offsets.push(offset);
-  }, this);
-  this.offsets.sort((a, b) => a - b);
-}
-
-WasmSourceMap.prototype.lookup = function (offset) {
-  var normalized = this.normalizeOffset(offset);
-  var info = this.mapping[normalized];
-  if (!info) {
-    return null;
-  }
-  return {
-    file: this.sources[info.source],
-    line: info.line,
-    column: info.column,
-    name: this.names[info.name],
-  };
-}
-
-WasmSourceMap.prototype.normalizeOffset = function (offset) {
-  var lo = 0;
-  var hi = this.offsets.length;
-  var mid;
-
-  while (lo < hi) {
-    mid = Math.floor((lo + hi) / 2);
-    if (this.offsets[mid] > offset) {
-      hi = mid;
-    } else {
-      lo = mid + 1;
-    }
-  }
-  return this.offsets[lo - 1];
-}
-
-var wasmSourceMapFile = 'a.out.wasm.map';
-if (!isDataURI(wasmBinaryFile)) {
-  wasmSourceMapFile = locateFile(wasmSourceMapFile);
-}
-
-function getSourceMap() {
-  try {
-    return JSON.parse(read_(wasmSourceMapFile));
-  } catch (err) {
-    abort(err);
-  }
-}
-
-function getSourceMapPromise() {
-  if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch == 'function') {
-    return fetch(wasmSourceMapFile, { credentials: 'same-origin' })
-      .then((response) => response['json']())
-      .catch(() => getSourceMap());
-  }
-  return new Promise(function(resolve, reject) {
-    resolve(getSourceMap());
-  });
-}
-
-// end include: source_map_support.js
-
-function receiveSourceMapJSON(sourceMap) {
-  wasmSourceMap = new WasmSourceMap(sourceMap);
-  removeRunDependency('source-map');
-}
-
-// When using postMessage to send an object, it is processed by the structured clone algorithm.
-// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
-// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
-function resetPrototype(constructor, attrs) {
-  var object = Object.create(constructor.prototype);
-  return Object.assign(object, attrs);
-}
-
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm() {
@@ -1197,8 +1067,6 @@ function createWasm() {
   }
   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
   addRunDependency('wasm-instantiate');
-
-  addRunDependency('source-map');
 
   // Prefer streaming instantiation if available.
   // Async compilation can be confusing when an error on the page overwrites Module
@@ -1273,7 +1141,6 @@ function createWasm() {
   // to any other async startup actions they are performing.
   // Also pthreads and wasm workers initialize the wasm instance through this path.
   if (Module['instantiateWasm']) {
-    wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);
     try {
       var exports = Module['instantiateWasm'](info, receiveInstance);
       return exports;
@@ -1284,7 +1151,6 @@ function createWasm() {
   }
 
   instantiateAsync();
-  getSourceMapPromise().then(receiveSourceMapJSON);
   return {}; // no exports yet; we'll fill them in later
 }
 
@@ -5046,7 +4912,6 @@ var unexportedRuntimeSymbols = [
   'stackSave',
   'stackRestore',
   'stackAlloc',
-  'WasmSourceMap',
   'writeStackCookie',
   'checkStackCookie',
   'ptrToString',
